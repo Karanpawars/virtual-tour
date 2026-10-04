@@ -1,15 +1,17 @@
+const BASE = import.meta.env.BASE_URL
+
 export const scenes = {
   lift: {
     id: 'lift',
     name: 'Lift',
 
     faces: [
-      '/panoramas/lift/1.jpg',
-      '/panoramas/lift/2.jpg',
-      '/panoramas/lift/3.jpg',
-      '/panoramas/lift/4.jpg',
-      '/panoramas/lift/5.jpg',
-      '/panoramas/lift/6.jpg'
+      `${BASE}panoramas/lift/1.jpg`,
+      `${BASE}panoramas/lift/2.jpg`,
+      `${BASE}panoramas/lift/3.jpg`,
+      `${BASE}panoramas/lift/4.jpg`,
+      `${BASE}panoramas/lift/5.jpg`,
+      `${BASE}panoramas/lift/6.jpg`
     ],
 
     hotspots: [
@@ -32,12 +34,12 @@ export const scenes = {
     name: 'Lobby',
 
     faces: [
-      '/panoramas/lobby/1.jpg',
-      '/panoramas/lobby/2.jpg',
-      '/panoramas/lobby/3.jpg',
-      '/panoramas/lobby/4.jpg',
-      '/panoramas/lobby/5.jpg',
-      '/panoramas/lobby/6.jpg'
+      `${BASE}panoramas/lobby/1.jpg`,
+      `${BASE}panoramas/lobby/2.jpg`,
+      `${BASE}panoramas/lobby/3.jpg`,
+      `${BASE}panoramas/lobby/4.jpg`,
+      `${BASE}panoramas/lobby/5.jpg`,
+      `${BASE}panoramas/lobby/6.jpg`
     ],
 
     hotspots: [

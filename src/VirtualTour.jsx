@@ -9,7 +9,9 @@ import {
   Map,
   Volume2,
   VolumeX,
-  Eye
+  Eye,
+  Heart,
+  Share2
 } from 'lucide-react'
 
 import { scenes } from './data/scenes'
@@ -55,15 +57,52 @@ export default function VirtualTour() {
   const [transitioning, setTransitioning] = useState(false)
 
   // ==================================================
+  // VIEW COUNT
+  // ==================================================
+
+  const [viewCount, setViewCount] = useState(() => {
+    const savedViews =
+      localStorage.getItem('virtual-tour-view-count')
+
+    return savedViews
+      ? Number(savedViews)
+      : 1
+  })
+
+  // ==================================================
+  // LIKE COUNT
+  // ==================================================
+
+  const [likeCount, setLikeCount] = useState(() => {
+    const savedLikes =
+      localStorage.getItem('virtual-tour-like-count')
+
+    return savedLikes
+      ? Number(savedLikes)
+      : 0
+  })
+
+  const [liked, setLiked] = useState(() => {
+    return (
+      localStorage.getItem(
+        'virtual-tour-liked'
+      ) === 'true'
+    )
+  })
+
+  // ==================================================
   // PERSPECTIVE
   // ==================================================
 
-  const [perspective, setPerspective] = useState('normal')
+  const [perspective, setPerspective] =
+    useState('normal')
 
-  const perspectiveRef = useRef('normal')
+  const perspectiveRef =
+    useRef('normal')
 
   useEffect(() => {
-    perspectiveRef.current = perspective
+    perspectiveRef.current =
+      perspective
   }, [perspective])
 
   // ==================================================
@@ -71,27 +110,176 @@ export default function VirtualTour() {
   // ==================================================
 
   useEffect(() => {
-    placementModeRef.current = placementMode
+    placementModeRef.current =
+      placementMode
   }, [placementMode])
+
+  // ==================================================
+  // INITIAL VIEW COUNT
+  // ==================================================
+
+  useEffect(() => {
+    const alreadyCounted =
+      sessionStorage.getItem(
+        'virtual-tour-session-counted'
+      )
+
+    if (!alreadyCounted) {
+      setViewCount((previous) => {
+        const next =
+          previous + 1
+
+        localStorage.setItem(
+          'virtual-tour-view-count',
+          String(next)
+        )
+
+        return next
+      })
+
+      sessionStorage.setItem(
+        'virtual-tour-session-counted',
+        'true'
+      )
+    }
+  }, [])
+
+  // ==================================================
+  // LIKE
+  // ==================================================
+
+  const toggleLike = () => {
+    if (liked) {
+      const next =
+        Math.max(0, likeCount - 1)
+
+      setLikeCount(next)
+
+      localStorage.setItem(
+        'virtual-tour-like-count',
+        String(next)
+      )
+
+      localStorage.setItem(
+        'virtual-tour-liked',
+        'false'
+      )
+
+      setLiked(false)
+
+      return
+    }
+
+    const next =
+      likeCount + 1
+
+    setLikeCount(next)
+
+    localStorage.setItem(
+      'virtual-tour-like-count',
+      String(next)
+    )
+
+    localStorage.setItem(
+      'virtual-tour-liked',
+      'true'
+    )
+
+    setLiked(true)
+  }
+
+  // ==================================================
+  // SHARE
+  // ==================================================
+
+  const shareTour = async () => {
+    const shareData = {
+      title: 'Virtual Tour',
+      text: 'Explore this virtual tour',
+      url: window.location.href
+    }
+
+    try {
+      if (
+        navigator.share
+      ) {
+        await navigator.share(
+          shareData
+        )
+
+        return
+      }
+
+      if (
+        navigator.clipboard
+      ) {
+        await navigator.clipboard.writeText(
+          window.location.href
+        )
+
+        alert(
+          'Virtual tour link copied!'
+        )
+
+        return
+      }
+
+      const textArea =
+        document.createElement(
+          'textarea'
+        )
+
+      textArea.value =
+        window.location.href
+
+      document.body.appendChild(
+        textArea
+      )
+
+      textArea.select()
+
+      document.execCommand(
+        'copy'
+      )
+
+      document.body.removeChild(
+        textArea
+      )
+
+      alert(
+        'Virtual tour link copied!'
+      )
+    } catch (error) {
+      console.error(
+        'Share failed:',
+        error
+      )
+    }
+  }
 
   // ==================================================
   // BACKGROUND MUSIC
   // ==================================================
 
   useEffect(() => {
-    const audio = new Audio(
-      '/audio/background-music.mp3'
-    )
+    const audioUrl =
+      `${import.meta.env.BASE_URL}audio/background-music.mp3`
+
+    const audio =
+      new Audio(audioUrl)
 
     audio.loop = true
     audio.volume = 0.45
     audio.preload = 'auto'
 
-    audioRef.current = audio
+    audioRef.current =
+      audio
 
     const handlePlay = () => {
       setMusicPlaying(true)
-      musicStartedRef.current = true
+
+      musicStartedRef.current =
+        true
     }
 
     const handlePause = () => {
@@ -112,18 +300,21 @@ export default function VirtualTour() {
     // AUTOPLAY
     // ==================================================
 
-    const attemptAutoplay = async () => {
-      try {
-        await audio.play()
+    const attemptAutoplay =
+      async () => {
+        try {
+          await audio.play()
 
-        musicStartedRef.current = true
-        setMusicPlaying(true)
-      } catch {
-        console.log(
-          'Autoplay blocked. Music will start after user interaction.'
-        )
+          musicStartedRef.current =
+            true
+
+          setMusicPlaying(true)
+        } catch {
+          console.log(
+            'Autoplay blocked. Music will start after user interaction.'
+          )
+        }
       }
-    }
 
     attemptAutoplay()
 
@@ -131,22 +322,25 @@ export default function VirtualTour() {
     // FIRST USER INTERACTION
     // ==================================================
 
-    const startAfterInteraction = () => {
-      if (
-        musicStartedRef.current ||
-        !audioRef.current
-      ) {
-        return
-      }
+    const startAfterInteraction =
+      () => {
+        if (
+          musicStartedRef.current ||
+          !audioRef.current
+        ) {
+          return
+        }
 
-      audioRef.current
-        .play()
-        .then(() => {
-          musicStartedRef.current = true
-          setMusicPlaying(true)
-        })
-        .catch(() => {})
-    }
+        audioRef.current
+          .play()
+          .then(() => {
+            musicStartedRef.current =
+              true
+
+            setMusicPlaying(true)
+          })
+          .catch(() => {})
+      }
 
     const interactionEvents = [
       'click',
@@ -188,9 +382,11 @@ export default function VirtualTour() {
       )
 
       audio.pause()
+
       audio.src = ''
 
-      audioRef.current = null
+      audioRef.current =
+        null
     }
   }, [])
 
@@ -198,37 +394,43 @@ export default function VirtualTour() {
   // MUSIC TOGGLE
   // ==================================================
 
-  const toggleMusic = async () => {
-    const audio = audioRef.current
+  const toggleMusic =
+    async () => {
+      const audio =
+        audioRef.current
 
-    if (!audio) {
-      return
-    }
-
-    if (audio.paused) {
-      try {
-        await audio.play()
-
-        musicStartedRef.current = true
-        setMusicPlaying(true)
-      } catch (error) {
-        console.error(
-          'Unable to start music:',
-          error
-        )
+      if (!audio) {
+        return
       }
-    } else {
-      audio.pause()
-      setMusicPlaying(false)
+
+      if (audio.paused) {
+        try {
+          await audio.play()
+
+          musicStartedRef.current =
+            true
+
+          setMusicPlaying(true)
+        } catch (error) {
+          console.error(
+            'Unable to start music:',
+            error
+          )
+        }
+      } else {
+        audio.pause()
+
+        setMusicPlaying(false)
+      }
     }
-  }
 
   // ==================================================
   // THREE.JS
   // ==================================================
 
   useEffect(() => {
-    const container = containerRef.current
+    const container =
+      containerRef.current
 
     if (!container) {
       return
@@ -238,19 +440,21 @@ export default function VirtualTour() {
     // THREE SCENE
     // ==================================================
 
-    const scene = new THREE.Scene()
+    const scene =
+      new THREE.Scene()
 
     // ==================================================
     // CAMERA
     // ==================================================
 
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      container.clientWidth /
-        container.clientHeight,
-      0.1,
-      100
-    )
+    const camera =
+      new THREE.PerspectiveCamera(
+        75,
+        container.clientWidth /
+          container.clientHeight,
+        0.1,
+        100
+      )
 
     camera.position.set(
       0,
@@ -258,7 +462,8 @@ export default function VirtualTour() {
       0
     )
 
-    camera.rotation.order = 'YXZ'
+    camera.rotation.order =
+      'YXZ'
 
     // ==================================================
     // RENDERER
@@ -288,10 +493,11 @@ export default function VirtualTour() {
       THREE.SRGBColorSpace
 
     // ==================================================
-    // ENABLE WEBXR
+    // WEBXR
     // ==================================================
 
-    renderer.xr.enabled = true
+    renderer.xr.enabled =
+      true
 
     rendererRef.current =
       renderer
@@ -386,11 +592,15 @@ export default function VirtualTour() {
 
           child.traverse(
             (object) => {
-              if (object.geometry) {
+              if (
+                object.geometry
+              ) {
                 object.geometry.dispose()
               }
 
-              if (object.material) {
+              if (
+                object.material
+              ) {
                 if (
                   Array.isArray(
                     object.material
@@ -429,9 +639,7 @@ export default function VirtualTour() {
               hotspot.position.z
             )
 
-            // ------------------------------------------
             // OUTER RING
-            // ------------------------------------------
 
             const ringGeometry =
               new THREE.RingGeometry(
@@ -458,9 +666,7 @@ export default function VirtualTour() {
               ring
             )
 
-            // ------------------------------------------
             // CENTER
-            // ------------------------------------------
 
             const centerGeometry =
               new THREE.CircleGeometry(
@@ -483,19 +689,6 @@ export default function VirtualTour() {
             group.add(
               center
             )
-
-            // ------------------------------------------
-            // NO ARROW
-            // ------------------------------------------
-            //
-            // The old black arrow has been completely
-            // removed.
-            //
-            // ------------------------------------------
-
-            // ------------------------------------------
-            // HOTSPOT DATA
-            // ------------------------------------------
 
             group.userData =
               hotspot
@@ -578,8 +771,13 @@ export default function VirtualTour() {
 
             setTimeout(
               () => {
-                setTransitioning(false)
-                setLoading(false)
+                setTransitioning(
+                  false
+                )
+
+                setLoading(
+                  false
+                )
               },
               firstLoad
                 ? 0
@@ -596,6 +794,7 @@ export default function VirtualTour() {
             )
 
             setLoading(false)
+
             setTransitioning(false)
           }
         )
@@ -610,7 +809,7 @@ export default function VirtualTour() {
     )
 
     // ==================================================
-    // CAMERA / DRAG STATE
+    // DRAG STATE
     // ==================================================
 
     let isDragging = false
@@ -695,10 +894,10 @@ export default function VirtualTour() {
 
         dragDistance = 0
 
-        // Stop auto rotation
         autoRotateSpeed = 0
 
-        autoRotateResumeTime = 0
+        autoRotateResumeTime =
+          0
 
         previousX = x
         previousY = y
@@ -767,8 +966,6 @@ export default function VirtualTour() {
 
         isDragging = false
 
-        // Restart the 2.5 second countdown
-        // only after interaction.
         autoRotateResumeTime =
           performance.now() +
           AUTO_ROTATE_RESUME_DELAY
@@ -817,8 +1014,7 @@ export default function VirtualTour() {
         }
 
         if (
-          event.touches.length !==
-          1
+          event.touches.length !== 1
         ) {
           return
         }
@@ -835,8 +1031,7 @@ export default function VirtualTour() {
     const handleTouchMove =
       (event) => {
         if (
-          event.touches.length !==
-          1
+          event.touches.length !== 1
         ) {
           return
         }
@@ -1130,7 +1325,8 @@ export default function VirtualTour() {
             (
               now -
               lastFrameTime
-            ) / 1000,
+            ) /
+              1000,
             0.05
           )
 
@@ -1360,7 +1556,6 @@ export default function VirtualTour() {
           null
       }
 
-      // Remove VR button
       if (
         vrButton &&
         container.contains(
@@ -1656,9 +1851,7 @@ export default function VirtualTour() {
 
         <div className="tour-top-controls">
 
-          {/* ==================================================
-              PERSPECTIVE
-              ================================================== */}
+          {/* PERSPECTIVE */}
 
           <div className="perspective-wrapper">
 
@@ -1717,9 +1910,7 @@ export default function VirtualTour() {
 
           </div>
 
-          {/* ==================================================
-              MUSIC
-              ================================================== */}
+          {/* MUSIC */}
 
           <button
             className="tour-icon-button"
@@ -1744,9 +1935,7 @@ export default function VirtualTour() {
             )}
           </button>
 
-          {/* ==================================================
-              FULLSCREEN
-              ================================================== */}
+          {/* FULLSCREEN */}
 
           <button
             className="tour-icon-button"
@@ -1795,6 +1984,144 @@ export default function VirtualTour() {
       )}
 
       {/* ==================================================
+          VISITOR ACTIONS
+          ================================================== */}
+
+      <div
+        style={{
+          position: 'absolute',
+          right: '20px',
+          bottom: '92px',
+          zIndex: 60,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px',
+          borderRadius: '14px',
+          background:
+            'rgba(0,0,0,0.58)',
+          border:
+            '1px solid rgba(255,255,255,0.18)',
+          backdropFilter:
+            'blur(14px)',
+          WebkitBackdropFilter:
+            'blur(14px)',
+          boxShadow:
+            '0 8px 30px rgba(0,0,0,0.28)'
+        }}
+      >
+
+        {/* VIEWS */}
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding:
+              '7px 9px',
+            color: '#ffffff',
+            fontSize: '12px',
+            fontWeight: 600,
+            whiteSpace: 'nowrap'
+          }}
+          title="Views"
+        >
+          <Eye size={16} />
+
+          <span>
+            {viewCount.toLocaleString()}
+          </span>
+        </div>
+
+        {/* LIKE */}
+
+        <button
+          onClick={
+            toggleLike
+          }
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            border: 'none',
+            outline: 'none',
+            borderRadius: '9px',
+            padding:
+              '7px 9px',
+            background:
+              liked
+                ? 'rgba(255,255,255,0.18)'
+                : 'transparent',
+            color:
+              '#ffffff',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: 600
+          }}
+          aria-label={
+            liked
+              ? 'Unlike'
+              : 'Like'
+          }
+          title={
+            liked
+              ? 'Unlike'
+              : 'Like'
+          }
+        >
+          <Heart
+            size={16}
+            fill={
+              liked
+                ? 'currentColor'
+                : 'none'
+            }
+          />
+
+          <span>
+            {likeCount.toLocaleString()}
+          </span>
+        </button>
+
+        {/* SHARE */}
+
+        <button
+          onClick={
+            shareTour
+          }
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            border: 'none',
+            outline: 'none',
+            borderRadius: '9px',
+            padding:
+              '7px 9px',
+            background:
+              'transparent',
+            color:
+              '#ffffff',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: 600
+          }}
+          aria-label="Share virtual tour"
+          title="Share virtual tour"
+        >
+          <Share2
+            size={17}
+          />
+
+          <span>
+            Share
+          </span>
+        </button>
+
+      </div>
+
+      {/* ==================================================
           BOTTOM BAR
           ================================================== */}
 
@@ -1811,9 +2138,7 @@ export default function VirtualTour() {
 
         <div className="tour-right-controls">
 
-          {/* ==================================================
-              MAP
-              ================================================== */}
+          {/* MAP */}
 
           <button
             className="tour-map-button"
@@ -1831,9 +2156,7 @@ export default function VirtualTour() {
             </span>
           </button>
 
-          {/* ==================================================
-              ZOOM
-              ================================================== */}
+          {/* ZOOM */}
 
           <div className="tour-controls">
 
