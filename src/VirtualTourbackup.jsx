@@ -11,114 +11,87 @@ import {
   VolumeX,
   Eye,
   Heart,
-  Share2,
-  ChevronLeft,
-  ChevronRight
+  Share2
 } from 'lucide-react'
 
 import { scenes } from './data/scenes'
-import {
-  incrementTourView,
-  likeTour,
-  getTourStats
-} from './tourStorage'
 import TourNavigation from './components/TourNavigation'
 import FloorMap from './components/FloorMap'
 
-export default function VirtualTour({ tour = null }) {
-    const tourId =
-  tour?.id ||
-  'virtual-tour-demo'
+export default function VirtualTour() {
   const containerRef = useRef(null)
   const rendererRef = useRef(null)
 
-  const initialSceneId =
-    tour?.scenes?.[0]?.id ||
-    (tour ? 'uploaded-tour' : 'lift')
+  const currentSceneRef = useRef('lift')
+  const cubeTextureRef = useRef(null)
 
-  const currentSceneRef =
-    useRef(initialSceneId)
-
-  const loadSceneRef =
-    useRef(null)
-
-  const cubeTextureRef =
-    useRef(null)
-
-  const panoramaMeshRef =
-    useRef(null)
-
-  const placementModeRef =
-    useRef(false)
+  const placementModeRef = useRef(false)
+  const loadSceneRef = useRef(null)
 
   // ==================================================
   // MUSIC
   // ==================================================
 
-  const audioRef =
-    useRef(null)
+  const audioRef = useRef(null)
+  const musicStartedRef = useRef(false)
 
-  const musicStartedRef =
-    useRef(false)
-
-  const [musicPlaying, setMusicPlaying] =
-    useState(false)
+  const [musicPlaying, setMusicPlaying] = useState(false)
 
   // ==================================================
   // UI STATE
   // ==================================================
 
-  const [floorMapOpen, setFloorMapOpen] =
-    useState(false)
+  const [floorMapOpen, setFloorMapOpen] = useState(false)
 
-  const [placementMode, setPlacementMode] =
-    useState(false)
+  const [placementMode, setPlacementMode] = useState(false)
 
   const [placementCoordinates, setPlacementCoordinates] =
     useState(null)
 
-  const [loading, setLoading] =
-    useState(true)
+  const [loading, setLoading] = useState(true)
 
-  const [fullscreen, setFullscreen] =
-    useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
 
-  const [currentLocation, setCurrentLocation] =
-    useState(
-      tour?.scenes?.[0]?.name ||
-        tour?.title ||
-        'Lift'
+  const [currentLocation, setCurrentLocation] = useState('Lift')
+
+  const [transitioning, setTransitioning] = useState(false)
+
+  // ==================================================
+  // VIEW COUNT
+  // ==================================================
+
+  const [viewCount, setViewCount] = useState(() => {
+    const savedViews = localStorage.getItem(
+      'virtual-tour-view-count'
     )
 
-  const [currentSceneId, setCurrentSceneId] =
-    useState(initialSceneId)
+    const parsedViews = Number(savedViews)
 
-  const [transitioning, setTransitioning] =
-    useState(false)
+    return Number.isFinite(parsedViews) && parsedViews >= 0
+      ? parsedViews
+      : 0
+  })
 
   // ==================================================
-  // REAL TOUR STATS
+  // LIKE COUNT
   // ==================================================
 
-  const [tourStats, setTourStats] =
-  useState(() =>
-    getTourStats(tourId)
-  )
+  const [likeCount, setLikeCount] = useState(() => {
+    const savedLikes =
+      localStorage.getItem('virtual-tour-like-count')
 
-const [liked, setLiked] =
-  useState(() => {
+    return savedLikes
+      ? Number(savedLikes)
+      : 0
+  })
+
+  const [liked, setLiked] = useState(() => {
     return (
       localStorage.getItem(
-        `virtual-tour-liked-${tourId}`
+        'virtual-tour-liked'
       ) === 'true'
     )
   })
-
-const viewCount =
-  Number(tourStats.views || 0)
-
-const likeCount =
-  Number(tourStats.likes || 0)
 
   // ==================================================
   // PERSPECTIVE
@@ -136,7 +109,7 @@ const likeCount =
   }, [perspective])
 
   // ==================================================
-  // PLACEMENT MODE
+  // PLACEMENT MODE REF
   // ==================================================
 
   useEffect(() => {
@@ -145,65 +118,74 @@ const likeCount =
   }, [placementMode])
 
   // ==================================================
-  // REAL VIEW COUNT
+  // INITIAL VIEW COUNT
   // ==================================================
 
   useEffect(() => {
-  if (!tourId) {
-    return
-  }
+    const sessionKey = 'virtual-tour-session-counted'
+    const alreadyCounted = sessionStorage.getItem(sessionKey)
 
-  const sessionKey =
-    `virtual-tour-session-counted-${tourId}`
+    if (alreadyCounted === 'true') {
+      return
+    }
 
-  const alreadyCounted =
-    sessionStorage.getItem(
-      sessionKey
-    )
+    setViewCount((previous) => {
+      const next = previous + 1
 
-  if (alreadyCounted === 'true') {
-    setTourStats(
-      getTourStats(tourId)
-    )
+      localStorage.setItem(
+        'virtual-tour-view-count',
+        String(next)
+      )
 
-    return
-  }
+      return next
+    })
 
-  const updatedStats =
-    incrementTourView(tourId)
-
-  setTourStats(
-    updatedStats
-  )
-
-  sessionStorage.setItem(
-    sessionKey,
-    'true'
-  )
-}, [tourId])
+    sessionStorage.setItem(sessionKey, 'true')
+  }, [])
 
   // ==================================================
-  // REAL LIKE
+  // LIKE
   // ==================================================
 
-const toggleLike = () => {
-  const nextLiked = !liked
+  const toggleLike = () => {
+    if (liked) {
+      const next =
+        Math.max(0, likeCount - 1)
 
-  const updatedStats =
-    likeTour(
-      tourId,
-      nextLiked
+      setLikeCount(next)
+
+      localStorage.setItem(
+        'virtual-tour-like-count',
+        String(next)
+      )
+
+      localStorage.setItem(
+        'virtual-tour-liked',
+        'false'
+      )
+
+      setLiked(false)
+
+      return
+    }
+
+    const next =
+      likeCount + 1
+
+    setLikeCount(next)
+
+    localStorage.setItem(
+      'virtual-tour-like-count',
+      String(next)
     )
 
-  setTourStats(
-    updatedStats
-  )
+    localStorage.setItem(
+      'virtual-tour-liked',
+      'true'
+    )
 
-  setLiked(
-    nextLiked
-  )
-}
-
+    setLiked(true)
+  }
 
   // ==================================================
   // SHARE
@@ -211,20 +193,15 @@ const toggleLike = () => {
 
   const shareTour = async () => {
     const shareData = {
-      title:
-        tour?.title ||
-        'Virtual Tour',
-
-      text:
-        tour?.description ||
-        'Explore this virtual tour',
-
-      url:
-        window.location.href
+      title: 'Virtual Tour',
+      text: 'Explore this virtual tour',
+      url: window.location.href
     }
 
     try {
-      if (navigator.share) {
+      if (
+        navigator.share
+      ) {
         await navigator.share(
           shareData
         )
@@ -232,7 +209,9 @@ const toggleLike = () => {
         return
       }
 
-      if (navigator.clipboard) {
+      if (
+        navigator.clipboard
+      ) {
         await navigator.clipboard.writeText(
           window.location.href
         )
@@ -278,31 +257,11 @@ const toggleLike = () => {
   }
 
   // ==================================================
-// SYNC STATS WHEN TOUR CHANGES
-// ==================================================
-
-useEffect(() => {
-  const currentStats =
-    getTourStats(tourId)
-
-  setTourStats(
-    currentStats
-  )
-
-  setLiked(
-    localStorage.getItem(
-      `virtual-tour-liked-${tourId}`
-    ) === 'true'
-  )
-}, [tourId])
-
-  // ==================================================
   // BACKGROUND MUSIC
   // ==================================================
 
   useEffect(() => {
     const audioUrl =
-      tour?.musicUrl ||
       `${import.meta.env.BASE_URL}audio/background-music.mp3`
 
     const audio =
@@ -336,6 +295,10 @@ useEffect(() => {
       handlePause
     )
 
+    // ==================================================
+    // AUTOPLAY
+    // ==================================================
+
     const attemptAutoplay =
       async () => {
         try {
@@ -353,6 +316,10 @@ useEffect(() => {
       }
 
     attemptAutoplay()
+
+    // ==================================================
+    // FIRST USER INTERACTION
+    // ==================================================
 
     const startAfterInteraction =
       () => {
@@ -419,44 +386,42 @@ useEffect(() => {
 
       audioRef.current =
         null
-
-      musicStartedRef.current =
-        false
     }
-  }, [tour?.musicUrl])
+  }, [])
 
   // ==================================================
   // MUSIC TOGGLE
   // ==================================================
 
-  const toggleMusic = async () => {
-    const audio =
-      audioRef.current
+  const toggleMusic =
+    async () => {
+      const audio =
+        audioRef.current
 
-    if (!audio) {
-      return
-    }
-
-    if (audio.paused) {
-      try {
-        await audio.play()
-
-        musicStartedRef.current =
-          true
-
-        setMusicPlaying(true)
-      } catch (error) {
-        console.error(
-          'Unable to start music:',
-          error
-        )
+      if (!audio) {
+        return
       }
-    } else {
-      audio.pause()
 
-      setMusicPlaying(false)
+      if (audio.paused) {
+        try {
+          await audio.play()
+
+          musicStartedRef.current =
+            true
+
+          setMusicPlaying(true)
+        } catch (error) {
+          console.error(
+            'Unable to start music:',
+            error
+          )
+        }
+      } else {
+        audio.pause()
+
+        setMusicPlaying(false)
+      }
     }
-  }
 
   // ==================================================
   // THREE.JS
@@ -471,7 +436,7 @@ useEffect(() => {
     }
 
     // ==================================================
-    // SCENE
+    // THREE SCENE
     // ==================================================
 
     const scene =
@@ -487,7 +452,7 @@ useEffect(() => {
         container.clientWidth /
           container.clientHeight,
         0.1,
-        1000
+        100
       )
 
     camera.position.set(
@@ -525,6 +490,10 @@ useEffect(() => {
 
     renderer.outputColorSpace =
       THREE.SRGBColorSpace
+
+    // ==================================================
+    // WEBXR
+    // ==================================================
 
     renderer.xr.enabled =
       true
@@ -612,44 +581,43 @@ useEffect(() => {
     // HOTSPOT CLEANUP
     // ==================================================
 
-    const clearHotspots = () => {
-      while (
-        hotspotGroup.children.length
-      ) {
-        const child =
-          hotspotGroup.children[
-            hotspotGroup.children.length - 1
-          ]
+    const clearHotspots =
+      () => {
+        while (
+          hotspotGroup.children.length
+        ) {
+          const child =
+            hotspotGroup.children.pop()
 
-        hotspotGroup.remove(
-          child
-        )
-
-        child.traverse(
-          (object) => {
-            if (object.geometry) {
-              object.geometry.dispose()
-            }
-
-            if (object.material) {
+          child.traverse(
+            (object) => {
               if (
-                Array.isArray(
-                  object.material
-                )
+                object.geometry
               ) {
-                object.material.forEach(
-                  (material) => {
-                    material.dispose()
-                  }
-                )
-              } else {
-                object.material.dispose()
+                object.geometry.dispose()
+              }
+
+              if (
+                object.material
+              ) {
+                if (
+                  Array.isArray(
+                    object.material
+                  )
+                ) {
+                  object.material.forEach(
+                    (material) => {
+                      material.dispose()
+                    }
+                  )
+                } else {
+                  object.material.dispose()
+                }
               }
             }
-          }
-        )
+          )
+        }
       }
-    }
 
     // ==================================================
     // CREATE HOTSPOTS
@@ -669,6 +637,8 @@ useEffect(() => {
               hotspot.position.y,
               hotspot.position.z
             )
+
+            // OUTER RING
 
             const ringGeometry =
               new THREE.RingGeometry(
@@ -694,6 +664,8 @@ useEffect(() => {
             group.add(
               ring
             )
+
+            // CENTER
 
             const centerGeometry =
               new THREE.CircleGeometry(
@@ -728,70 +700,6 @@ useEffect(() => {
       }
 
     // ==================================================
-    // GET UPLOADED SCENE
-    // ==================================================
-
-    const getUploadedScene =
-      (sceneId) => {
-        if (
-          !Array.isArray(
-            tour?.scenes
-          )
-        ) {
-          return null
-        }
-
-        return tour.scenes.find(
-          (item) =>
-            item.id === sceneId
-        )
-      }
-
-    // ==================================================
-    // DISPOSE CURRENT PANORAMA
-    // ==================================================
-
-    const disposeCurrentPanorama =
-      () => {
-        if (
-          panoramaMeshRef.current
-        ) {
-          const oldMesh =
-            panoramaMeshRef.current
-
-          scene.remove(
-            oldMesh
-          )
-
-          oldMesh.geometry.dispose()
-
-          if (
-            oldMesh.material?.map
-          ) {
-            oldMesh.material.map.dispose()
-          }
-
-          if (
-            oldMesh.material
-          ) {
-            oldMesh.material.dispose()
-          }
-
-          panoramaMeshRef.current =
-            null
-        }
-
-        if (
-          cubeTextureRef.current
-        ) {
-          cubeTextureRef.current.dispose()
-
-          cubeTextureRef.current =
-            null
-        }
-      }
-
-    // ==================================================
     // LOAD SCENE
     // ==================================================
 
@@ -800,66 +708,8 @@ useEffect(() => {
         sceneId,
         firstLoad = false
       ) => {
-        let targetScene =
-          null
-
-        // ==================================================
-        // UPLOADED TOUR
-        // ==================================================
-
-        if (tour) {
-          const uploadedScene =
-            getUploadedScene(
-              sceneId
-            )
-
-          if (
-            uploadedScene
-          ) {
-            targetScene = {
-              id: uploadedScene.id,
-
-              name:
-                uploadedScene.name ||
-                `Room ${
-                  (uploadedScene.order ?? 0) +
-                  1
-                }`,
-
-              panorama:
-                uploadedScene.panoramaUrl,
-
-              hotspots:
-                uploadedScene.hotspots ||
-                []
-            }
-          } else if (
-            !tour.scenes?.length &&
-            tour.panoramaUrl
-          ) {
-            targetScene = {
-              id: 'uploaded-tour',
-
-              name:
-                tour.title ||
-                'Virtual Tour',
-
-              panorama:
-                tour.panoramaUrl,
-
-              hotspots: []
-            }
-          }
-        }
-
-        // ==================================================
-        // BUILT-IN TOUR
-        // ==================================================
-
-        else {
-          targetScene =
-            scenes[sceneId]
-        }
+        const targetScene =
+          scenes[sceneId]
 
         if (!targetScene) {
           console.error(
@@ -870,11 +720,10 @@ useEffect(() => {
         }
 
         if (
-          !targetScene.panorama &&
           !targetScene.faces?.length
         ) {
           console.warn(
-            `Scene "${sceneId}" does not have a panorama or panorama faces.`
+            `Scene "${sceneId}" does not have panorama faces yet.`
           )
 
           return
@@ -886,14 +735,30 @@ useEffect(() => {
           setTransitioning(true)
         }
 
-        const finishLoad =
-          () => {
+        const loader =
+          new THREE.CubeTextureLoader()
+
+        loader.load(
+          targetScene.faces,
+
+          (cubeTexture) => {
+            cubeTexture.colorSpace =
+              THREE.SRGBColorSpace
+
+            scene.background =
+              cubeTexture
+
+            if (
+              cubeTextureRef.current
+            ) {
+              cubeTextureRef.current.dispose()
+            }
+
+            cubeTextureRef.current =
+              cubeTexture
+
             currentSceneRef.current =
               sceneId
-
-            setCurrentSceneId(
-              sceneId
-            )
 
             setCurrentLocation(
               targetScene.name
@@ -905,116 +770,18 @@ useEffect(() => {
 
             setTimeout(
               () => {
-                setTransitioning(false)
-                setLoading(false)
+                setTransitioning(
+                  false
+                )
+
+                setLoading(
+                  false
+                )
               },
               firstLoad
                 ? 0
                 : 250
             )
-          }
-
-        // ==================================================
-        // EQUIRECTANGULAR PANORAMA
-        // ==================================================
-
-        if (
-          targetScene.panorama
-        ) {
-          const loader =
-            new THREE.TextureLoader()
-
-          loader.load(
-            targetScene.panorama,
-
-            (texture) => {
-              texture.colorSpace =
-                THREE.SRGBColorSpace
-
-              texture.minFilter =
-                THREE.LinearFilter
-
-              texture.magFilter =
-                THREE.LinearFilter
-
-              const geometry =
-                new THREE.SphereGeometry(
-                  100,
-                  64,
-                  40
-                )
-
-              geometry.scale(
-                -1,
-                1,
-                1
-              )
-
-              const material =
-                new THREE.MeshBasicMaterial({
-                  map: texture
-                })
-
-              const panoramaMesh =
-                new THREE.Mesh(
-                  geometry,
-                  material
-                )
-
-              disposeCurrentPanorama()
-
-              scene.add(
-                panoramaMesh
-              )
-
-              panoramaMeshRef.current =
-                panoramaMesh
-
-              scene.background =
-                null
-
-              finishLoad()
-            },
-
-            undefined,
-
-            (error) => {
-              console.error(
-                `Failed to load panorama "${sceneId}"`,
-                error
-              )
-
-              setLoading(false)
-              setTransitioning(false)
-            }
-          )
-
-          return
-        }
-
-        // ==================================================
-        // SIX-FACE CUBE PANORAMA
-        // ==================================================
-
-        const loader =
-          new THREE.CubeTextureLoader()
-
-        loader.load(
-          targetScene.faces,
-
-          (cubeTexture) => {
-            cubeTexture.colorSpace =
-              THREE.SRGBColorSpace
-
-            disposeCurrentPanorama()
-
-            scene.background =
-              cubeTexture
-
-            cubeTextureRef.current =
-              cubeTexture
-
-            finishLoad()
           },
 
           undefined,
@@ -1026,6 +793,7 @@ useEffect(() => {
             )
 
             setLoading(false)
+
             setTransitioning(false)
           }
         )
@@ -1034,12 +802,8 @@ useEffect(() => {
     loadSceneRef.current =
       loadScene
 
-    // ==================================================
-    // INITIAL SCENE
-    // ==================================================
-
     loadScene(
-      initialSceneId,
+      'lift',
       true
     )
 
@@ -1048,7 +812,9 @@ useEffect(() => {
     // ==================================================
 
     let isDragging = false
+
     let didDrag = false
+
     let dragDistance = 0
 
     let previousX = 0
@@ -1122,11 +888,15 @@ useEffect(() => {
         }
 
         isDragging = true
+
         didDrag = false
+
         dragDistance = 0
 
         autoRotateSpeed = 0
-        autoRotateResumeTime = 0
+
+        autoRotateResumeTime =
+          0
 
         previousX = x
         previousY = y
@@ -1330,7 +1100,7 @@ useEffect(() => {
               event.clientX -
               rect.left
             ) /
-              rect.width
+            rect.width
           ) *
             2 -
           1
@@ -1342,7 +1112,7 @@ useEffect(() => {
                 event.clientY -
                 rect.top
               ) /
-                rect.height
+              rect.height
             ) *
               2 -
             1
@@ -1374,11 +1144,9 @@ useEffect(() => {
             x: Number(
               position.x.toFixed(3)
             ),
-
             y: Number(
               position.y.toFixed(3)
             ),
-
             z: Number(
               position.z.toFixed(3)
             )
@@ -1411,7 +1179,9 @@ useEffect(() => {
           (group) => {
             group.children.forEach(
               (child) => {
-                objects.push(child)
+                objects.push(
+                  child
+                )
               }
             )
           }
@@ -1434,37 +1204,9 @@ useEffect(() => {
         const hotspot =
           object.parent?.userData
 
-        if (
-          !hotspot?.target
-        ) {
+        if (!hotspot?.target) {
           return
         }
-
-        // ==================================================
-        // UPLOADED TOUR HOTSPOT
-        // ==================================================
-
-        if (tour) {
-          const targetUploadedScene =
-            getUploadedScene(
-              hotspot.target
-            )
-
-          if (
-            targetUploadedScene?.panoramaUrl
-          ) {
-            loadScene(
-              hotspot.target,
-              false
-            )
-          }
-
-          return
-        }
-
-        // ==================================================
-        // BUILT-IN TOUR HOTSPOT
-        // ==================================================
 
         const targetScene =
           scenes[
@@ -1552,12 +1294,6 @@ useEffect(() => {
         const height =
           container.clientHeight
 
-        if (
-          height <= 0
-        ) {
-          return
-        }
-
         camera.aspect =
           width / height
 
@@ -1588,7 +1324,8 @@ useEffect(() => {
             (
               now -
               lastFrameTime
-            ) / 1000,
+            ) /
+              1000,
             0.05
           )
 
@@ -1611,6 +1348,9 @@ useEffect(() => {
         ) {
           desiredAutoRotateSpeed =
             AUTO_ROTATE_SPEED
+        } else {
+          desiredAutoRotateSpeed =
+            0
         }
 
         autoRotateSpeed +=
@@ -1625,7 +1365,7 @@ useEffect(() => {
           deltaSeconds
 
         // ==================================================
-        // SMOOTH ROTATION
+        // SMOOTH CAMERA ROTATION
         // ==================================================
 
         currentRotationX +=
@@ -1729,11 +1469,19 @@ useEffect(() => {
           }
         )
 
+        // ==================================================
+        // RENDER
+        // ==================================================
+
         renderer.render(
           scene,
           camera
         )
       }
+
+    // ==================================================
+    // START RENDER LOOP
+    // ==================================================
 
     renderer.setAnimationLoop(
       animate
@@ -1798,7 +1546,14 @@ useEffect(() => {
 
       clearHotspots()
 
-      disposeCurrentPanorama()
+      if (
+        cubeTextureRef.current
+      ) {
+        cubeTextureRef.current.dispose()
+
+        cubeTextureRef.current =
+          null
+      }
 
       if (
         vrButton &&
@@ -1829,7 +1584,7 @@ useEffect(() => {
       rendererRef.current =
         null
     }
-  }, [tour])
+  }, [])
 
   // ==================================================
   // ZOOM BUTTON
@@ -1855,15 +1610,11 @@ useEffect(() => {
     }
 
   // ==================================================
-  // SWITCH BUILT-IN SCENE
+  // SCENE SWITCH
   // ==================================================
 
   const switchScene =
     (sceneId) => {
-      if (tour) {
-        return
-      }
-
       if (
         sceneId ===
         currentSceneRef.current
@@ -1885,41 +1636,6 @@ useEffect(() => {
           `Scene "${sceneId}" does not have panorama faces yet.`
         )
 
-        return
-      }
-
-      loadSceneRef.current?.(
-        sceneId,
-        false
-      )
-    }
-
-  // ==================================================
-  // SWITCH UPLOADED ROOM
-  // ==================================================
-
-  const switchUploadedRoom =
-    (sceneId) => {
-      if (!tour) {
-        return
-      }
-
-      if (
-        sceneId ===
-        currentSceneRef.current
-      ) {
-        return
-      }
-
-      const targetScene =
-        tour.scenes?.find(
-          (scene) =>
-            scene.id === sceneId
-        )
-
-      if (
-        !targetScene?.panoramaUrl
-      ) {
         return
       }
 
@@ -2046,73 +1762,6 @@ useEffect(() => {
   ]
 
   // ==================================================
-  // UPLOADED ROOMS
-  // ==================================================
-
-  const uploadedRooms =
-    Array.isArray(tour?.scenes)
-      ? tour.scenes
-      : []
-
-  const currentRoomIndex =
-    uploadedRooms.findIndex(
-      (room) =>
-        room.id ===
-        currentSceneId
-    )
-
-  const goToPreviousRoom =
-    () => {
-      if (
-        uploadedRooms.length < 2
-      ) {
-        return
-      }
-
-      const currentIndex =
-        currentRoomIndex >= 0
-          ? currentRoomIndex
-          : 0
-
-      const previousIndex =
-        currentIndex <= 0
-          ? uploadedRooms.length - 1
-          : currentIndex - 1
-
-      switchUploadedRoom(
-        uploadedRooms[
-          previousIndex
-        ].id
-      )
-    }
-
-  const goToNextRoom =
-    () => {
-      if (
-        uploadedRooms.length < 2
-      ) {
-        return
-      }
-
-      const currentIndex =
-        currentRoomIndex >= 0
-          ? currentRoomIndex
-          : 0
-
-      const nextIndex =
-        (
-          currentIndex + 1
-        ) %
-        uploadedRooms.length
-
-      switchUploadedRoom(
-        uploadedRooms[
-          nextIndex
-        ].id
-      )
-    }
-
-  // ==================================================
   // UI
   // ==================================================
 
@@ -2165,82 +1814,8 @@ useEffect(() => {
           font-weight: 600;
         }
 
-        .visitor-action-button:hover {
-          background: rgba(255,255,255,0.12);
-        }
-
         .visitor-action-button.liked {
           background: rgba(255,255,255,0.18);
-        }
-
-        .uploaded-room-navigation {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          min-width: 0;
-          max-width: min(72vw, 850px);
-        }
-
-        .uploaded-room-arrow {
-          width: 34px;
-          height: 34px;
-          flex-shrink: 0;
-          display: grid;
-          place-items: center;
-          border: 1px solid rgba(255,255,255,.14);
-          border-radius: 9px;
-          background: rgba(255,255,255,.08);
-          color: #fff;
-          cursor: pointer;
-        }
-
-        .uploaded-room-arrow:hover {
-          background: rgba(255,255,255,.15);
-        }
-
-        .uploaded-room-list {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          overflow-x: auto;
-          scrollbar-width: none;
-          padding: 2px;
-        }
-
-        .uploaded-room-list::-webkit-scrollbar {
-          display: none;
-        }
-
-        .uploaded-room-button {
-          flex-shrink: 0;
-          border: 1px solid rgba(255,255,255,.14);
-          border-radius: 9px;
-          padding: 8px 13px;
-          background: rgba(0,0,0,.3);
-          color: rgba(255,255,255,.75);
-          cursor: pointer;
-          font-size: 11px;
-          font-weight: 700;
-          white-space: nowrap;
-          transition: .2s ease;
-        }
-
-        .uploaded-room-button:hover {
-          background: rgba(255,255,255,.12);
-          color: #fff;
-        }
-
-        .uploaded-room-button.active {
-          background: #fff;
-          color: #111;
-          border-color: #fff;
-        }
-
-        .uploaded-room-counter {
-          flex-shrink: 0;
-          font-size: 10px;
-          color: rgba(255,255,255,.45);
-          padding: 0 4px;
         }
 
         @media (max-width: 600px) {
@@ -2264,20 +1839,6 @@ useEffect(() => {
           .visitor-action-button svg {
             width: 14px;
             height: 14px;
-          }
-
-          .uploaded-room-navigation {
-            max-width: calc(100vw - 20px);
-          }
-
-          .uploaded-room-arrow {
-            width: 30px;
-            height: 30px;
-          }
-
-          .uploaded-room-button {
-            padding: 7px 10px;
-            font-size: 10px;
           }
         }
       `}</style>
@@ -2312,6 +1873,7 @@ useEffect(() => {
 
       {placementMode && (
         <div className="hotspot-placement-panel">
+
           <div className="placement-title">
             HOTSPOT POSITION MODE
           </div>
@@ -2322,6 +1884,7 @@ useEffect(() => {
 
           {placementCoordinates && (
             <div className="placement-coordinates">
+
               <div>
                 X:{' '}
                 {placementCoordinates.x}
@@ -2336,12 +1899,14 @@ useEffect(() => {
                 Z:{' '}
                 {placementCoordinates.z}
               </div>
+
             </div>
           )}
 
           <div className="placement-hint">
             Press P to exit
           </div>
+
         </div>
       )}
 
@@ -2352,8 +1917,7 @@ useEffect(() => {
       <div className="tour-topbar">
 
         <div className="tour-brand">
-          {tour?.title ||
-            'VIRTUAL TOUR'}
+          VIRTUAL TOUR
         </div>
 
         <div className="tour-top-controls">
@@ -2466,95 +2030,68 @@ useEffect(() => {
           FLOOR MAP
           ================================================== */}
 
-      {!tour &&
-        floorMapOpen && (
-          <FloorMap
-            currentLocation={
-              currentLocation
-            }
-            onClose={() =>
-              setFloorMapOpen(
-                false
-              )
-            }
-            onSelectScene={(
+      {floorMapOpen && (
+        <FloorMap
+          currentLocation={
+            currentLocation
+          }
+          onClose={() =>
+            setFloorMapOpen(
+              false
+            )
+          }
+          onSelectScene={(
+            sceneId
+          ) => {
+            switchScene(
               sceneId
-            ) => {
-              switchScene(
-                sceneId
-              )
+            )
 
-              setFloorMapOpen(
-                false
-              )
-            }}
-          />
-        )}
+            setFloorMapOpen(
+              false
+            )
+          }}
+        />
+      )}
 
       {/* ==================================================
-          REAL VISITOR ACTIONS
+          VISITOR ACTIONS
           ================================================== */}
 
       <div className="visitor-actions">
 
+        {/* VIEWS */}
         <div
           className="visitor-action-item"
-          title="Total views for this tour"
+          title="Views this session/browser"
         >
           <Eye size={16} />
-
-          <span>
-            {viewCount.toLocaleString()}
-          </span>
+          <span>{viewCount.toLocaleString()}</span>
         </div>
 
+        {/* LIKE */}
         <button
-          className={`visitor-action-button ${
-            liked
-              ? 'liked'
-              : ''
-          }`}
-          onClick={
-            toggleLike
-          }
-          aria-label={
-            liked
-              ? 'Liked'
-              : 'Like'
-          }
-          title={
-            liked
-              ? 'Liked'
-              : 'Like'
-          }
+          className={`visitor-action-button ${liked ? 'liked' : ''}`}
+          onClick={toggleLike}
+          aria-label={liked ? 'Unlike' : 'Like'}
+          title={liked ? 'Unlike' : 'Like'}
         >
           <Heart
             size={16}
-            fill={
-              liked
-                ? 'currentColor'
-                : 'none'
-            }
+            fill={liked ? 'currentColor' : 'none'}
           />
-
-          <span>
-            {likeCount.toLocaleString()}
-          </span>
+          <span>{likeCount.toLocaleString()}</span>
         </button>
 
+        {/* SHARE */}
         <button
           className="visitor-action-button"
-          onClick={
-            shareTour
-          }
+          onClick={shareTour}
           aria-label="Share virtual tour"
           title="Share virtual tour"
         >
           <Share2 size={17} />
-
-          <span>
-            Share
-          </span>
+          <span>Share</span>
         </button>
 
       </div>
@@ -2565,120 +2102,34 @@ useEffect(() => {
 
       <div className="tour-bottombar">
 
-        {/* UPLOADED TOUR ROOM NAVIGATION */}
-
-        {tour &&
-          uploadedRooms.length > 0 && (
-            <div className="uploaded-room-navigation">
-
-              {uploadedRooms.length > 1 && (
-                <button
-                  className="uploaded-room-arrow"
-                  onClick={
-                    goToPreviousRoom
-                  }
-                  aria-label="Previous room"
-                  title="Previous room"
-                >
-                  <ChevronLeft
-                    size={17}
-                  />
-                </button>
-              )}
-
-              <div className="uploaded-room-list">
-
-                {uploadedRooms.map(
-                  (room, index) => (
-                    <button
-                      key={room.id}
-                      className={`uploaded-room-button ${
-                        room.id ===
-                        currentSceneId
-                          ? 'active'
-                          : ''
-                      }`}
-                      onClick={() =>
-                        switchUploadedRoom(
-                          room.id
-                        )
-                      }
-                      title={
-                        room.name ||
-                        `Room ${index + 1}`
-                      }
-                    >
-                      {room.name ||
-                        `Room ${index + 1}`}
-                    </button>
-                  )
-                )}
-
-              </div>
-
-              {uploadedRooms.length > 1 && (
-                <button
-                  className="uploaded-room-arrow"
-                  onClick={
-                    goToNextRoom
-                  }
-                  aria-label="Next room"
-                  title="Next room"
-                >
-                  <ChevronRight
-                    size={17}
-                  />
-                </button>
-              )}
-
-              {uploadedRooms.length > 1 && (
-                <div className="uploaded-room-counter">
-                  {Math.max(
-                    currentRoomIndex + 1,
-                    1
-                  )}
-                  /
-                  {uploadedRooms.length}
-                </div>
-              )}
-
-            </div>
-          )}
-
-        {/* BUILT-IN NAVIGATION */}
-
-        {!tour && (
-          <TourNavigation
-            currentLocation={
-              currentLocation
-            }
-            onSelectScene={
-              switchScene
-            }
-          />
-        )}
+        <TourNavigation
+          currentLocation={
+            currentLocation
+          }
+          onSelectScene={
+            switchScene
+          }
+        />
 
         <div className="tour-right-controls">
 
           {/* MAP */}
 
-          {!tour && (
-            <button
-              className="tour-map-button"
-              onClick={() =>
-                setFloorMapOpen(
-                  true
-                )
-              }
-              aria-label="Open floor plan"
-            >
-              <Map size={18} />
+          <button
+            className="tour-map-button"
+            onClick={() =>
+              setFloorMapOpen(
+                true
+              )
+            }
+            aria-label="Open floor plan"
+          >
+            <Map size={18} />
 
-              <span>
-                MAP
-              </span>
-            </button>
-          )}
+            <span>
+              MAP
+            </span>
+          </button>
 
           {/* ZOOM */}
 
@@ -2692,7 +2143,6 @@ useEffect(() => {
                 )
               }
               aria-label="Zoom out"
-              title="Zoom out"
             >
               <Minus size={18} />
             </button>
@@ -2705,7 +2155,6 @@ useEffect(() => {
                 )
               }
               aria-label="Zoom in"
-              title="Zoom in"
             >
               <Plus size={18} />
             </button>
