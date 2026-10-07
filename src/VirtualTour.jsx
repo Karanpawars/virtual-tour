@@ -61,12 +61,15 @@ export default function VirtualTour() {
   // ==================================================
 
   const [viewCount, setViewCount] = useState(() => {
-    const savedViews =
-      localStorage.getItem('virtual-tour-view-count')
+    const savedViews = localStorage.getItem(
+      'virtual-tour-view-count'
+    )
 
-    return savedViews
-      ? Number(savedViews)
-      : 1
+    const parsedViews = Number(savedViews)
+
+    return Number.isFinite(parsedViews) && parsedViews >= 0
+      ? parsedViews
+      : 0
   })
 
   // ==================================================
@@ -119,29 +122,25 @@ export default function VirtualTour() {
   // ==================================================
 
   useEffect(() => {
-    const alreadyCounted =
-      sessionStorage.getItem(
-        'virtual-tour-session-counted'
-      )
+    const sessionKey = 'virtual-tour-session-counted'
+    const alreadyCounted = sessionStorage.getItem(sessionKey)
 
-    if (!alreadyCounted) {
-      setViewCount((previous) => {
-        const next =
-          previous + 1
-
-        localStorage.setItem(
-          'virtual-tour-view-count',
-          String(next)
-        )
-
-        return next
-      })
-
-      sessionStorage.setItem(
-        'virtual-tour-session-counted',
-        'true'
-      )
+    if (alreadyCounted === 'true') {
+      return
     }
+
+    setViewCount((previous) => {
+      const next = previous + 1
+
+      localStorage.setItem(
+        'virtual-tour-view-count',
+        String(next)
+      )
+
+      return next
+    })
+
+    sessionStorage.setItem(sessionKey, 'true')
   }, [])
 
   // ==================================================
@@ -1771,6 +1770,78 @@ export default function VirtualTour() {
       ref={containerRef}
       className="virtual-tour"
     >
+      <style>{`
+        .visitor-actions {
+          position: absolute;
+          right: 20px;
+          bottom: 92px;
+          z-index: 60;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px;
+          border-radius: 14px;
+          background: rgba(0,0,0,0.58);
+          border: 1px solid rgba(255,255,255,0.18);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          box-shadow: 0 8px 30px rgba(0,0,0,0.28);
+        }
+
+        .visitor-action-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 9px;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .visitor-action-button {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          border: none;
+          outline: none;
+          border-radius: 9px;
+          padding: 7px 9px;
+          background: transparent;
+          color: #fff;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .visitor-action-button.liked {
+          background: rgba(255,255,255,0.18);
+        }
+
+        @media (max-width: 600px) {
+          .visitor-actions {
+            right: 10px;
+            bottom: 76px;
+            gap: 3px;
+            padding: 4px;
+            border-radius: 10px;
+          }
+
+          .visitor-action-item,
+          .visitor-action-button {
+            gap: 4px;
+            padding: 5px 6px;
+            font-size: 10px;
+            border-radius: 7px;
+          }
+
+          .visitor-action-item svg,
+          .visitor-action-button svg {
+            width: 14px;
+            height: 14px;
+          }
+        }
+      `}</style>
 
       {/* ==================================================
           LOADING
@@ -1987,136 +2058,40 @@ export default function VirtualTour() {
           VISITOR ACTIONS
           ================================================== */}
 
-      <div
-        style={{
-          position: 'absolute',
-          right: '20px',
-          bottom: '92px',
-          zIndex: 60,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px',
-          borderRadius: '14px',
-          background:
-            'rgba(0,0,0,0.58)',
-          border:
-            '1px solid rgba(255,255,255,0.18)',
-          backdropFilter:
-            'blur(14px)',
-          WebkitBackdropFilter:
-            'blur(14px)',
-          boxShadow:
-            '0 8px 30px rgba(0,0,0,0.28)'
-        }}
-      >
+      <div className="visitor-actions">
 
         {/* VIEWS */}
-
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding:
-              '7px 9px',
-            color: '#ffffff',
-            fontSize: '12px',
-            fontWeight: 600,
-            whiteSpace: 'nowrap'
-          }}
-          title="Views"
+          className="visitor-action-item"
+          title="Views this session/browser"
         >
           <Eye size={16} />
-
-          <span>
-            {viewCount.toLocaleString()}
-          </span>
+          <span>{viewCount.toLocaleString()}</span>
         </div>
 
         {/* LIKE */}
-
         <button
-          onClick={
-            toggleLike
-          }
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            border: 'none',
-            outline: 'none',
-            borderRadius: '9px',
-            padding:
-              '7px 9px',
-            background:
-              liked
-                ? 'rgba(255,255,255,0.18)'
-                : 'transparent',
-            color:
-              '#ffffff',
-            cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: 600
-          }}
-          aria-label={
-            liked
-              ? 'Unlike'
-              : 'Like'
-          }
-          title={
-            liked
-              ? 'Unlike'
-              : 'Like'
-          }
+          className={`visitor-action-button ${liked ? 'liked' : ''}`}
+          onClick={toggleLike}
+          aria-label={liked ? 'Unlike' : 'Like'}
+          title={liked ? 'Unlike' : 'Like'}
         >
           <Heart
             size={16}
-            fill={
-              liked
-                ? 'currentColor'
-                : 'none'
-            }
+            fill={liked ? 'currentColor' : 'none'}
           />
-
-          <span>
-            {likeCount.toLocaleString()}
-          </span>
+          <span>{likeCount.toLocaleString()}</span>
         </button>
 
         {/* SHARE */}
-
         <button
-          onClick={
-            shareTour
-          }
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            border: 'none',
-            outline: 'none',
-            borderRadius: '9px',
-            padding:
-              '7px 9px',
-            background:
-              'transparent',
-            color:
-              '#ffffff',
-            cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: 600
-          }}
+          className="visitor-action-button"
+          onClick={shareTour}
           aria-label="Share virtual tour"
           title="Share virtual tour"
         >
-          <Share2
-            size={17}
-          />
-
-          <span>
-            Share
-          </span>
+          <Share2 size={17} />
+          <span>Share</span>
         </button>
 
       </div>
