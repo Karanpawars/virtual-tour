@@ -3,13 +3,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Loading Virtual Tour</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting...</title>
     <script>
-      sessionStorage.redirect = location.href;
-      location.replace('/virtual-tour/');
+      (function () {
+        sessionStorage.redirect = window.location.href;
+        window.location.replace('/virtual-tour/');
+      })();
     </script>
   </head>
   <body>
-    Redirecting...
+    Redirecting to Virtual Tour...
   </body>
 </html>

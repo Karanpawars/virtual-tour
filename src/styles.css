@@ -1159,3 +1159,38 @@ body {
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
+/* Admin page scrolling fix */
+html:has(.admin-page),
+body:has(.admin-page) {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
+body:has(.admin-page) {
+  position: static !important;
+}
+
+#root:has(.admin-page) {
+  min-height: 100vh;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.admin-page {
+  min-height: 100vh;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.admin-layout {
+  min-height: 100vh;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.admin-main {
+  min-height: 100vh;
+  overflow: visible !important;
+}
