@@ -1,15 +1,36 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Loading Virtual Tour</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virtual Tour</title>
     <script>
-      sessionStorage.redirect = location.href;
-      location.replace('/virtual-tour/');
+      (function () {
+        var base = '/virtual-tour';
+        var path = window.location.pathname;
+
+        if (path === base + '/admin' || path.startsWith(base + '/admin/')) {
+          window.location.replace(base + '/');
+          sessionStorage.setItem(
+            'virtual-tour-route',
+            path + window.location.search + window.location.hash
+          );
+          return;
+        }
+
+        var route = path.startsWith(base + '/')
+          ? path.slice(base.length)
+          : '/';
+
+        var redirect = base + '/?redirect=' + encodeURIComponent(
+          route + window.location.search + window.location.hash
+        );
+
+        window.location.replace(redirect);
+      })();
     </script>
   </head>
   <body>
-    Redirecting...
+    Redirecting to Virtual Tour...
   </body>
 </html>
